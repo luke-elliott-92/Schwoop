@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E8EDF4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1524" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Schwoop">
+<meta name="application-name" content="Schwoop">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
+<title>Schwoop Scorekeeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow scorepad column — standings first, then the round entry card, then the round-by-round log. Player colors borrow from multi-colored Swoop decks. */
+:root{
+  --bg:#E8EDF4; --surface:#FFFFFF; --ink:#14213A; --muted:#5A6982; --line:#D2DAE6;
+  --accent:#1F4FD8; --accent-ink:#FFFFFF;
+  --lead:#0B7F57; --lead-soft:#DCF2E8; --warn:#B93C0B; --out:#1F4FD8; --out-soft:#E2E9FD;
+  --p1:#D21F3C; --p2:#1F4FD8; --p3:#0B7F57; --p4:#C98200; --p5:#7A3EC2; --p6:#0A86A0; --p7:#B93C0B; --p8:#5A6982;
+  --on-pc:#FFFFFF; --shadow:rgba(20,33,58,.16);
+  --display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1524; --surface:#172238; --ink:#E7ECF5; --muted:#9AA8C0; --line:#2A3853;
+    --accent:#7D9BFF; --accent-ink:#0E1524;
+    --lead:#4FD1A0; --lead-soft:#12352D; --warn:#FF9A5C; --out:#9DB3FF; --out-soft:#1F2C4F;
+    --p1:#FF6B7F; --p2:#7D9BFF; --p3:#4FD1A0; --p4:#F5B940; --p5:#B48AF0; --p6:#4CC9E0; --p7:#FF9A5C; --p8:#9AA8C0;
+    --on-pc:#0E1524; --shadow:rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1524; --surface:#172238; --ink:#E7ECF5; --muted:#9AA8C0; --line:#2A3853;
+  --accent:#7D9BFF; --accent-ink:#0E1524;
+  --lead:#4FD1A0; --lead-soft:#12352D; --warn:#FF9A5C; --out:#9DB3FF; --out-soft:#1F2C4F;
+  --p1:#FF6B7F; --p2:#7D9BFF; --p3:#4FD1A0; --p4:#F5B940; --p5:#B48AF0; --p6:#4CC9E0; --p7:#FF9A5C; --p8:#9AA8C0;
+  --on-pc:#0E1524; --shadow:rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 72px;-webkit-text-size-adjust:100%;
+}
+.app{max-width:560px;margin:0 auto;display:grid;gap:18px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:8px 16px;flex-wrap:wrap}
+.mark{position:relative;margin:0;padding-bottom:10px;font-family:var(--display);font-weight:800;font-size:2.5rem;line-height:1;letter-spacing:-0.025em}
+.mark svg{position:absolute;left:2px;right:0;bottom:0;width:100%;height:12px}
+.mark path{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round}
+.meta{color:var(--muted);font-size:.875rem;font-weight:600;padding-bottom:6px}
+h2{margin:0;font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1.1;letter-spacing:-0.01em;text-wrap:balance}
+p{margin:0}
+.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:.8125rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;gap:14px;min-width:0}
+.btn{font:inherit;font-weight:700;font-size:1rem;border-radius:12px;border:1px solid transparent;padding:10px 16px;min-height:48px;cursor:pointer}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-danger{background:transparent;color:var(--warn);border-color:var(--warn)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{font:inherit;font-weight:600;background:none;border:0;padding:6px 0;color:var(--accent);cursor:pointer;text-align:left;justify-self:start}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.field{font:inherit;font-size:1.0625rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:48px;width:100%;min-width:0}
+.field.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.err{color:var(--warn);font-weight:600;font-size:.9375rem}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.actions .wide{flex:1}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--pc)}
+.who{display:flex;align-items:center;gap:8px;min-width:0;font-weight:700;font-size:1.0625rem}
+.who .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Setup */
+.add{display:grid;grid-template-columns:1fr auto;gap:10px}
+.roster{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.roster li{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:12px;font-weight:700;font-size:1.0625rem}
+.roster li .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster li.is-dealer{box-shadow:inset 0 0 0 2px var(--pc)}
+.roster .pick{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:40px;font:inherit;font-weight:700;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.card-ic{width:10px;height:13px;flex:none}
+.dchip{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:700;line-height:1.4;padding:2px 9px;border-radius:999px;background:var(--pc);color:var(--on-pc);white-space:nowrap}
+.deal{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--bg)}
+.deal-ic{width:38px;height:38px;border-radius:11px;background:var(--pc);color:var(--on-pc);display:grid;place-items:center}
+.deal-ic .card-ic{width:15px;height:20px}
+.deal-txt{display:grid;gap:1px;min-width:0;font-size:1.0625rem}
+.deal-txt .muted{font-size:.8125rem;font-variant-numeric:tabular-nums}
+.deal .link{min-height:44px;padding:0 4px}
+.deal-pick{display:flex;flex-wrap:wrap;gap:8px}
+.dpick{font:inherit;font-weight:700;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.dpick[aria-pressed="true"]{border-color:var(--pc);box-shadow:inset 0 0 0 1px var(--pc)}
+.roster .seat{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.875rem;width:1.25em}
+.roster .link{color:var(--muted);font-size:.875rem}
+.tgt-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.tgt-row .field{width:96px}
+
+/* Standings */
+.board{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:12px 14px;border-radius:14px;background:var(--bg)}
+.row.lead{background:var(--lead-soft)}
+.rank{font-family:var(--display);font-weight:800;font-size:1.125rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.total{font-family:var(--display);font-weight:800;font-size:1.75rem;line-height:1;font-variant-numeric:tabular-nums}
+.bar{grid-column:2 / 4;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--pc)}
+.sub{grid-column:2 / 4;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.warn{color:var(--warn);font-weight:700}
+.chip{font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--lead);color:var(--surface)}
+
+/* Game over */
+.over{background:var(--lead-soft);border-color:var(--lead)}
+.over h2{font-size:2rem}
+
+/* Round entry */
+.entry-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.entry-list{display:grid;gap:10px}
+.entry-row{display:grid;grid-template-columns:minmax(0,1fr) 88px auto;align-items:center;gap:10px}
+.out{font:inherit;font-weight:700;font-size:.875rem;min-height:48px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.out[aria-pressed="true"]{background:var(--out-soft);color:var(--out);border-color:var(--out)}
+
+/* Log */
+.log{display:grid;gap:8px;min-width:0}
+.log-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:right;white-space:nowrap}
+thead th{font-size:.875rem;font-weight:700;border-bottom:1px solid var(--line)}
+thead th:first-child{color:var(--muted);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase}
+th:first-child{text-align:left}
+.th{display:inline-flex;align-items:center;gap:6px;max-width:9em}
+.th .n{overflow:hidden;text-overflow:ellipsis}
+.th .dot{width:9px;height:9px}
+tbody tr.tap{cursor:pointer}
+@media (hover:hover){tbody tr.tap:hover td,tbody tr.tap:hover th{background:var(--bg)}}
+tbody tr.editing td,tbody tr.editing th{background:var(--out-soft)}
+.rbtn{font:inherit;font-weight:700;min-width:34px;min-height:34px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.rnum{font-weight:700;color:var(--muted)}
+.zero{display:inline-block;min-width:28px;text-align:center;background:var(--out-soft);color:var(--out);padding:1px 8px;border-radius:999px;font-weight:700}
+tfoot th,tfoot td{border-top:1px solid var(--line);font-family:var(--display);font-weight:800;font-size:1.0625rem}
+
+/* Footer + past games */
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+.note{padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.fine{font-size:.8125rem;color:var(--muted)}
+.past{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.past li{display:grid;gap:2px}
+
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-16px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);font-weight:600;padding:10px 18px;border-radius:999px;z-index:20;text-align:center;
+  max-width:calc(100% - 32px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));transition:opacity .2s ease,transform .2s ease}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+.mark-btn{font:inherit;color:inherit;letter-spacing:inherit;background:none;border:0;padding:0;cursor:pointer}
+
+/* Lead-change stinger: player-color wipe, ink ribbon, slammed title, 3s total */
+.stinger{position:fixed;inset:0;z-index:50;overflow:hidden;display:grid;place-items:center;cursor:pointer;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.st-wipe{position:absolute;top:-10%;bottom:-10%;left:-30%;width:160%;background:var(--pc);z-index:0;
+  transform:translateX(-110%) skewX(-16deg);animation:st-wipe 3s cubic-bezier(.7,0,.2,1) forwards}
+.st-ribbon{position:absolute;left:-20%;right:-20%;top:50%;height:clamp(220px,52vh,380px);background:var(--ink);z-index:1;
+  transform:translate(110%,-50%) rotate(-6deg);animation:st-ribbon 3s cubic-bezier(.7,0,.2,1) forwards}
+.st-text{position:relative;z-index:2;display:grid;justify-items:center;gap:4px;padding-inline:16px;text-align:center;color:var(--bg);
+  transform:rotate(-6deg);animation:st-text 3s linear forwards}
+.st-l1{display:grid;justify-items:center;font-family:var(--display);font-weight:800;font-size:clamp(3.2rem,17vw,7.5rem);line-height:.9;letter-spacing:-0.035em;
+  animation:st-slam 3s cubic-bezier(.2,1.5,.4,1) forwards}
+.st-swoosh{display:block;width:96%;height:auto;aspect-ratio:200/14;overflow:visible;margin-top:4px}
+.st-swoosh path{fill:none;stroke:var(--pc);stroke-width:3.5;stroke-linecap:round;stroke-dasharray:240;stroke-dashoffset:240;animation:st-draw 3s ease-out forwards}
+.st-l2{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,8.5vw,3.6rem);line-height:1;letter-spacing:-0.02em;
+  animation:st-rise 3s cubic-bezier(.2,1.2,.4,1) forwards}
+.st-who{margin-top:12px;background:var(--pc);color:var(--on-pc);font-weight:800;font-size:clamp(1rem,4.4vw,1.375rem);padding:6px 16px;border-radius:999px;
+  animation:st-pop 3s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes st-wipe{0%{transform:translateX(-110%) skewX(-16deg)}14%,84%{transform:translateX(0) skewX(-16deg)}100%{transform:translateX(110%) skewX(-16deg)}}
+@keyframes st-ribbon{0%,8%{transform:translate(110%,-50%) rotate(-6deg)}22%,80%{transform:translate(0,-50%) rotate(-6deg)}94%,100%{transform:translate(-110%,-50%) rotate(-6deg)}}
+@keyframes st-text{0%,20%{opacity:0}22%,80%{opacity:1}86%,100%{opacity:0}}
+@keyframes st-slam{0%,22%{transform:scale(2.6);opacity:0}30%,100%{transform:scale(1);opacity:1}}
+@keyframes st-draw{0%,30%{stroke-dashoffset:240}42%,100%{stroke-dashoffset:0}}
+@keyframes st-rise{0%,32%{transform:translateY(36px) skewX(-8deg);opacity:0}40%,100%{transform:translateY(0) skewX(-8deg);opacity:1}}
+@keyframes st-pop{0%,40%{transform:scale(.4);opacity:0}47%,100%{transform:scale(1);opacity:1}}
+@keyframes st-fade{0%{opacity:0}12%,85%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){
+  .stinger{animation:st-fade 2.4s linear forwards}
+  .st-wipe{animation:none;transform:skewX(-16deg)}
+  .st-ribbon{animation:none;transform:translate(0,-50%) rotate(-6deg)}
+  .st-text{animation:none;transform:rotate(-6deg)}
+  .st-l1,.st-who{animation:none}
+  .st-l2{animation:none;transform:skewX(-8deg)}
+  .st-swoosh path{animation:none;stroke-dashoffset:0}
+}
+
+/* Phone-first touches */
+html{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);align-items:center;
+  margin-left:calc(-1 * max(16px, env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right,0px)));
+  padding:8px max(16px, env(safe-area-inset-right,0px)) 8px max(16px, env(safe-area-inset-left,0px));transition:box-shadow .15s ease}
+.top.scrolled{box-shadow:0 1px 0 var(--line),0 6px 16px var(--shadow)}
+.top .meta{padding-bottom:0;white-space:nowrap}
+button,.who,.row,.mark,.meta,.eyebrow,th,.toast,.stinger,.prog{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+button,input{touch-action:manipulation}
+.btn:active,.out:active,.rbtn:active{transform:scale(.97)}
+.save-bar{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 10px 10px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px var(--shadow)}
+.save-bar .btn{flex:none;min-height:52px;padding-inline:20px}
+.prog{font-size:.875rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.prog.done{color:var(--lead)}
+.entry-row .field{min-height:54px;font-size:1.375rem;scroll-margin-top:84px;scroll-margin-bottom:120px}
+.out{min-width:64px;min-height:54px}
+.log tbody th,.log thead th:first-child,.log tfoot th{position:sticky;left:0;z-index:1;background:var(--surface)}
+.rbtn{min-width:38px;min-height:38px}
+@media (max-width:520px){
+  body{padding-block:12px 40px}
+  .app{gap:14px}
+  .mark{font-size:2rem}
+  .meta{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-bottom:8px}
+  .panel{padding:14px;border-radius:16px;gap:12px}
+  h2{font-size:1.3rem}
+  .row{padding:10px 12px;gap:4px 10px}
+  .total{font-size:1.6rem}
+  th,td{padding:8px 10px}
+  .foot .btn{flex:1}
+}
+@media (max-width:380px){.mark{font-size:2.1rem}.entry-row{grid-template-columns:minmax(0,1fr) 76px auto}}
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="stinger" class="stinger" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+  var root = document.getElementById('app');
+  var toastEl = document.getElementById('toast');
+  var LS_CUR = 'schwoop.current', LS_HIST = 'schwoop.history';
+
+  var state = null, history = [], view = 'loading', mode = 'memory';
+  var draftPlayers = [], draftDealer = 0, setupErr = '', choosingDealer = false;
+  var entry = {}, editing = null, entryErr = '';
+  var writeFlag = null, writeRejected = false;
+  var gameRef = null, histCol = null, chain = Promise.resolve(), lastJSON = null;
+  var armed = null, armTimer = null, loadTimer = null, loadNote = '', toastTimer = null;
+
+  var SWOOSH = '<svg viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true"><path d="M2 11 C 55 1, 125 1, 198 8"/></svg>';
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function col(p){ return 'var(--p' + (((p.c || 0) % 8) + 1) + ')'; }
+  function plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
+  function joinList(a){ return a.length <= 1 ? (a[0] || '') : a.slice(0,-1).join(', ') + ' and ' + a[a.length-1]; }
+  function canWrite(){ return mode !== 'db' || (writeFlag !== false && !writeRejected); }
+  function fmtDate(iso){ try { return new Date(iso).toLocaleDateString(undefined, {month:'short', day:'numeric'}); } catch(e){ return ''; } }
+
+  function normalize(g){
+    if (!g || !Array.isArray(g.players) || !g.players.length) return null;
+    g.rounds = Array.isArray(g.rounds) ? g.rounds : [];
+    g.players.forEach(function(p, i){ if (typeof p.c !== 'number') p.c = i; });
+    if (typeof g.dealer !== 'number' || g.dealer < 0 || g.dealer >= g.players.length) g.dealer = 0;
+    return g;
+  }
+  function totals(g){
+    var t = {};
+    g.players.forEach(function(p){ t[p.id] = 0; });
+    g.rounds.forEach(function(r){ g.players.forEach(function(p){ t[p.id] += (r.s && r.s[p.id]) || 0; }); });
+    return t;
+  }
+  function standings(g){
+    var t = totals(g);
+    var arr = g.players.map(function(p, i){ return {id:p.id, name:p.name, c:p.c, i:i, total:t[p.id]}; });
+    arr.sort(function(a,b){ return a.total - b.total || a.i - b.i; });
+    var rank = 0, prev = null;
+    arr.forEach(function(p, k){ if (p.total !== prev){ rank = k + 1; prev = p.total; } p.rank = rank; });
+    return arr;
+  }
+  /* Two trips around the table: every player deals twice. */
+  function roundsTotal(g){ return g.players.length * 2; }
+  function isOver(g){ return g.rounds.length >= roundsTotal(g); }
+  function freshGame(names, dealer){
+    return { id: 'g' + newId(), players: names.map(function(n, i){ return {id:'p' + newId() + i, name:n, c:i}; }), rounds: [], dealer: dealer || 0, startedAt: new Date().toISOString() };
+  }
+  /* Players are listed in seat order and the deal passes to the left, so round r's dealer is (first dealer + r). */
+  function dealerIdx(g, r){ var n = g.players.length; return ((g.dealer + r) % n + n) % n; }
+  function dealerOf(g, r){ return g.players[dealerIdx(g, r)]; }
+  function ordinal(k){ return k === 1 ? '1st' : k === 2 ? '2nd' : k === 3 ? '3rd' : k + 'th'; }
+  var DEAL_ICON = '<svg class="card-ic" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 4.6 L8.5 8 L6 11.4 L3.5 8 Z" fill="currentColor"/></svg>';
+
+  /* ---------- saving ---------- */
+  function toast(msg){
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 2600);
+  }
+  function saveLocal(){
+    if (mode !== 'local') return;
+    try { localStorage.setItem(LS_CUR, JSON.stringify(state)); localStorage.setItem(LS_HIST, JSON.stringify(history.slice(0,20))); }
+    catch(e){ mode = 'memory'; }
+  }
+  function onWriteError(e){
+    var code = e && e.code;
+    if (code === 'invalid_argument'){ writeRejected = true; toast("You can follow this game, but you can't enter scores."); }
+    else if (code === 'quota_exceeded'){ toast('Storage for this page is full, so that change was not saved.'); }
+    else { toast("Couldn't save that change. Check your connection and try again."); }
+    render();
+  }
+  function dbWrite(fn){ chain = chain.then(fn).catch(onWriteError); }
+  function persistGame(){
+    if (mode === 'db'){
+      var data = JSON.parse(JSON.stringify(state));
+      lastJSON = JSON.stringify(data);
+      dbWrite(function(){ return gameRef.set(data); });
+    } else saveLocal();
+  }
+  function archive(g){
+    if (!g || !g.rounds.length) return;
+    var st = standings(g), best = st[0].total;
+    var rec = {
+      id: g.id, totalRounds: roundsTotal(g), startedAt: g.startedAt || null, endedAt: new Date().toISOString(),
+      finished: isOver(g), rounds: g.rounds.length,
+      players: st.map(function(p){ return {name:p.name, total:p.total, c:p.c}; }),
+      winners: st.filter(function(p){ return p.total === best; }).map(function(p){ return p.name; })
+    };
+    if (mode === 'db'){ dbWrite(function(){ return histCol.doc(String(g.id || ('g' + newId()))).set(rec); }); }
+    else { history = [rec].concat(history.filter(function(h){ return h.id !== rec.id; })).slice(0,20); saveLocal(); }
+  }
+
+  /* ---------- rendering ---------- */
+  function header(meta, tappable){
+    var word = tappable ? '<button type="button" class="mark-btn" data-action="stinger" aria-label="Schwoop: replay the lead animation">Schwoop</button>' : 'Schwoop';
+    return '<header class="top"><h1 class="mark">' + word + SWOOSH + '</h1>' + (meta ? '<div class="meta">' + meta + '</div>' : '') + '</header>';
+  }
+  function render(){
+    var a = document.activeElement, id = a && a.id && a !== document.body ? a.id : null;
+    var sel = null;
+    try { if (a && typeof a.selectionStart === 'number') sel = [a.selectionStart, a.selectionEnd]; } catch(e){}
+    root.innerHTML = view === 'loading' ? renderLoading() : view === 'setup' ? renderSetup() : renderGame();
+    if (id){
+      var el = document.getElementById(id);
+      if (el){ el.focus({preventScroll:true}); if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch(e){} } }
+    }
+    syncWake();
+    markScrolled();
+  }
+  function markScrolled(){
+    var t = root.querySelector('.top');
+    if (t) t.classList.toggle('scrolled', (window.scrollY || 0) > 4);
+  }
+  window.addEventListener('scroll', markScrolled, {passive:true});
+  function renderLoading(){
+    return header('') + '<section class="panel"><p class="muted">' + esc(loadNote || 'Loading your game…') + '</p></section>';
+  }
+  function renderSetup(){
+    var n = draftPlayers.length, full = n >= 8;
+    var roster = n
+      ? '<ol class="roster">' + draftPlayers.map(function(p, i){
+          var isD = i === draftDealer;
+          return '<li class="' + (isD ? 'is-dealer' : '') + '" style="--pc:var(--p' + (i % 8 + 1) + ')"><span class="seat">' + (i + 1) + '</span>' +
+                 '<button type="button" class="pick" data-action="pickDealer" data-i="' + i + '" aria-pressed="' + isD + '" aria-label="' + esc(p) + (isD ? ' deals first' : ': make first dealer') + '">' +
+                   '<span class="dot"></span><span class="n">' + esc(p) + '</span>' + (isD ? '<span class="dchip">' + DEAL_ICON + 'Deals first</span>' : '') + '</button>' +
+                 '<button type="button" class="link" data-action="remove" data-i="' + i + '" aria-label="Remove ' + esc(p) + '">Remove</button></li>';
+        }).join('') + '</ol>' +
+        (n >= 2 ? '<p class="muted small">List players in order around the table. Tap a name to pick the first dealer, and the deal passes to the left each round.</p>' : '')
+      : '<p class="muted">Add everyone at the table in seating order. Swoop plays best with 3 to 8.</p>';
+    var back = state ? '<button type="button" class="link" data-action="back">Back to the current game</button>' : '';
+    return header('Lowest score wins') +
+      '<section class="panel">' +
+        '<h2>Who\'s playing?</h2>' +
+        '<form id="addForm" class="add" autocomplete="off">' +
+          '<label class="sr" for="newName">Player name</label>' +
+          '<input id="newName" class="field" placeholder="' + (full ? 'Table is full' : 'Player name') + '" maxlength="20" enterkeyhint="enter" autocapitalize="words"' + (full ? ' disabled' : '') + '>' +
+          '<button class="btn btn-ghost"' + (full ? ' disabled' : '') + '>Add</button>' +
+        '</form>' +
+        (setupErr ? '<p class="err" role="alert">' + esc(setupErr) + '</p>' : '') +
+        roster +
+        '<p class="muted">' + (n >= 2 ? 'The game runs ' + (n * 2) + ' rounds, twice around the table. Lowest total wins.' : 'The game runs two rounds per player, twice around the table. Lowest total wins.') + '</p>' +
+        '<button type="button" class="btn btn-primary" data-action="start"' + (n < 2 ? ' disabled' : '') + '>' + (n < 2 ? 'Add at least 2 players' : 'Start game with ' + n + ' players') + '</button>' +
+        back +
+      '</section>' + renderHistory();
+  }
+  function renderHistory(){
+    if (!history.length) return '';
+    return '<section class="panel"><div class="eyebrow">Past games</div><ul class="past">' + history.slice(0,8).map(function(h){
+      var w = (h.winners || []).map(esc);
+      var verb = h.finished ? (w.length > 1 ? 'tied' : 'won') : (w.length > 1 ? 'were tied when it ended' : 'was leading when it ended');
+      return '<li><div><strong>' + joinList(w) + '</strong> ' + verb + '<span class="muted"> · ' + esc(fmtDate(h.endedAt)) + ' · ' + plural(h.rounds || 0, 'round') + '</span></div>' +
+             '<div class="muted small">' + (h.players || []).map(function(p){ return esc(p.name) + ' ' + p.total; }).join(' · ') + '</div></li>';
+    }).join('') + '</ul></section>';
+  }
+  function renderGame(){
+    var g = state, st = standings(g), over = isOver(g), rn = g.rounds.length;
+    var meta = over ? 'Final after ' + plural(rn, 'round') : 'Round ' + (rn + 1) + ' of ' + roundsTotal(g);
+    var html = header(meta, rn > 0);
+    if (over && editing === null) html += renderOver(g, st);
+    html += renderBoard(g, st, over);
+    if (canWrite() && (!over || editing !== null)) html += renderEntry(g);
+    if (!canWrite()) html += '<p class="note">View only: you can follow the scores, but you can\'t enter them.</p>';
+    if (rn) html += renderLog(g);
+    html += renderFoot(g);
+    return html;
+  }
+  function renderOver(g, st){
+    var best = st[0].total;
+    var w = st.filter(function(p){ return p.total === best; });
+    var title = w.length === 1 ? esc(w[0].name) + ' wins!' : joinList(w.map(function(p){ return esc(p.name); })) + ' tie!';
+    var margin = st.length > w.length ? st[w.length].total - best : 0;
+    return '<section class="panel over"><div class="eyebrow">Game over</div><h2>' + title + '</h2>' +
+      '<p>Lowest total of ' + best + ' after ' + plural(g.rounds.length, 'round') + (margin ? ', ' + margin + ' ahead of the next player' : '') + '.</p>' +
+      (canWrite() ? '<div class="actions"><button type="button" class="btn btn-primary" data-action="rematch">Rematch</button><button type="button" class="btn btn-ghost" data-action="toSetup">Change players</button></div>' : '') +
+      '</section>';
+  }
+  function renderBoard(g, st, over){
+    var rn = g.rounds.length, best = st[0].total, last = rn ? g.rounds[rn - 1] : null;
+    var worst = st[st.length - 1].total || 1;
+    var dNow = over ? -1 : dealerIdx(g, rn);
+    return '<section class="panel" aria-labelledby="boardHead"><div class="eyebrow" id="boardHead">' + (over ? 'Final standings' : 'Standings') + '</div><ol class="board">' +
+      st.map(function(p){
+        var isLead = rn > 0 && p.total === best;
+        var pct = Math.min(100, p.total / worst * 100);
+        var lp = last && last.s ? last.s[p.id] : null;
+        var lastTxt = !last ? 'No rounds yet' : lp === 0 ? 'Went out last round' : '+' + (lp || 0) + ' last round';
+        var right = '';
+        if (isLead) right = '<span class="chip">' + (over ? 'Winner' : 'Leading') + '</span>';
+        else if (rn) right = (p.total - best) + ' behind';
+        return '<li class="row' + (isLead ? ' lead' : '') + '" style="--pc:' + col(p) + '">' +
+          '<span class="rank">' + p.rank + '</span>' +
+          '<span class="who"><span class="dot"></span><span class="n">' + esc(p.name) + '</span>' + (p.i === dNow ? '<span class="dchip">' + DEAL_ICON + 'Dealing</span>' : '') + '</span>' +
+          '<span class="total">' + p.total + '</span>' +
+          '<span class="bar" aria-hidden="true"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
+          '<span class="sub"><span>' + lastTxt + '</span><span>' + right + '</span></span>' +
+        '</li>';
+      }).join('') + '</ol></section>';
+  }
+  function renderEntry(g){
+    var isEdit = editing !== null, rnum = isEdit ? editing + 1 : g.rounds.length + 1;
+    var rows = g.players.map(function(p){
+      var v = entry[p.id] != null ? entry[p.id] : '';
+      return '<div class="entry-row" style="--pc:' + col(p) + '">' +
+        '<label class="who" for="pts-' + p.id + '"><span class="dot"></span><span class="n">' + esc(p.name) + '</span></label>' +
+        '<input id="pts-' + p.id + '" class="field num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="next" placeholder="pts" value="' + esc(v) + '" data-pid="' + p.id + '">' +
+        '<button type="button" class="out" data-action="out" data-pid="' + p.id + '" aria-pressed="' + (v === '0') + '" aria-label="' + esc(p.name) + ' went out">Out</button>' +
+      '</div>';
+    }).join('');
+    var rIdx = isEdit ? editing : g.rounds.length, np = g.players.length;
+    var d = dealerOf(g, rIdx), dI = dealerIdx(g, rIdx);
+    var nextD = rIdx + 1 < roundsTotal(g) ? dealerOf(g, rIdx + 1) : null;
+    var dSub = isEdit ? 'Round ' + rnum
+      : ordinal(Math.floor(rIdx / np) + 1) + ' of 2 deals · ' + (nextD ? esc(nextD.name) + ' deals next' : 'last deal of the game');
+    var strip = '<div class="deal" style="--pc:' + col(d) + '">' +
+        '<span class="deal-ic">' + DEAL_ICON + '</span>' +
+        '<span class="deal-txt"><span><strong>' + esc(d.name) + '</strong> ' + (isEdit ? 'dealt' : 'is dealing') + '</span><span class="muted">' + dSub + '</span></span>' +
+        (isEdit ? '' : '<button type="button" class="link" data-action="chooseDealer" aria-expanded="' + choosingDealer + '">' + (choosingDealer ? 'Done' : 'Change') + '</button>') +
+      '</div>' +
+      (choosingDealer && !isEdit
+        ? '<div class="deal-pick" role="group" aria-label="Who is dealing round ' + rnum + '?">' + g.players.map(function(p, i){
+            return '<button type="button" class="dpick" data-action="setDealer" data-i="' + i + '" aria-pressed="' + (i === dI) + '" style="--pc:' + col(p) + '"><span class="dot"></span>' + esc(p.name) + '</button>';
+          }).join('') + '</div>'
+        : '');
+    var filled = countFilled();
+    var extra = isEdit
+      ? '<div class="actions"><button type="button" class="btn btn-ghost" data-action="cancelEdit">Cancel</button>' +
+        '<button type="button" class="btn btn-danger" data-action="deleteRound">' + (armed === 'delete' ? 'Tap again to delete' : 'Delete round') + '</button></div>'
+      : '';
+    var bar = '<div class="save-bar"><span class="prog' + (filled === g.players.length ? ' done' : '') + '" id="prog">' + progText(filled, g.players.length) + '</span>' +
+      '<button class="btn btn-primary">' + (isEdit ? 'Save changes' : 'Save round ' + rnum) + '</button></div>';
+    return '<section class="panel" id="entryPanel"><div class="entry-head"><h2>' + (isEdit ? 'Edit round ' + rnum : 'Round ' + rnum + ' points') + '</h2>' +
+      '<span class="muted small">' + (!isEdit && rnum === roundsTotal(g) ? '<strong class="warn">Final round</strong> · ' : '') + 'Points left in hand · tap Out for 0</span></div>' + strip +
+      '<form id="roundForm" class="entry-list" novalidate>' + rows +
+        (entryErr ? '<p class="err" role="alert">' + esc(entryErr) + '</p>' : '') +
+        extra + bar +
+      '</form></section>';
+  }
+  function renderLog(g){
+    var t = totals(g), cw = canWrite();
+    var head = '<tr><th scope="col">Rnd</th>' + g.players.map(function(p){
+      return '<th scope="col" style="--pc:' + col(p) + '"><span class="th"><span class="dot"></span><span class="n">' + esc(p.name) + '</span></span></th>';
+    }).join('') + '</tr>';
+    var body = g.rounds.map(function(r, i){
+      var cells = g.players.map(function(p){
+        var v = (r.s && r.s[p.id]) || 0;
+        return v === 0 ? '<td><span class="zero" title="Went out">0</span></td>' : '<td>' + v + '</td>';
+      }).join('');
+      var lab = cw ? '<button type="button" class="rbtn" data-action="edit" data-i="' + i + '" aria-label="Edit round ' + (i + 1) + '">' + (i + 1) + '</button>' : '<span class="rnum">' + (i + 1) + '</span>';
+      return '<tr' + (cw ? ' data-i="' + i + '"' : '') + ' class="' + (cw ? 'tap' : '') + (editing === i ? ' editing' : '') + '"><th scope="row">' + lab + '</th>' + cells + '</tr>';
+    }).join('');
+    var foot = '<tr><th scope="row">Total</th>' + g.players.map(function(p){ return '<td>' + t[p.id] + '</td>'; }).join('') + '</tr>';
+    return '<section class="log"><div class="eyebrow">Round by round' + (cw ? '<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500"> · tap a round to fix it</span>' : '') + '</div>' +
+      '<div class="log-wrap"><table><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + foot + '</tfoot></table></div></section>';
+  }
+  function renderFoot(g){
+    var store = mode === 'db' ? 'Scores save automatically and stay in sync for everyone viewing this page.'
+      : mode === 'local' ? 'Scores are saved in this browser only.'
+      : 'Scores aren\'t being saved in this view, so keep this page open.';
+    var controls = canWrite()
+      ? '<button type="button" class="btn btn-ghost" data-action="newGame">' + (armed === 'newGame' ? 'Tap again to end this game' : 'New game') + '</button>'
+      : '';
+    return (controls ? '<div class="foot">' + controls + '</div>' : '') + '<p class="fine">' + store + '</p>';
+  }
+
+  /* ---------- phone helpers ---------- */
+  function countFilled(){
+    if (!state) return 0;
+    return state.players.filter(function(p){ return entry[p.id] != null && entry[p.id] !== ''; }).length;
+  }
+  function progText(f, n){ return f === n ? 'All ' + n + ' entered' : f + ' of ' + n + ' entered'; }
+  function updateProg(){
+    var pg = document.getElementById('prog'); if (!pg || !state) return;
+    var f = countFilled(), n = state.players.length;
+    pg.textContent = progText(f, n); pg.classList.toggle('done', f === n);
+  }
+  /* Keep the screen awake while a game is in progress (ignored where unsupported). */
+  var wakeLock = null, wakePending = false;
+  function syncWake(){
+    try {
+      var want = view === 'game' && state && !isOver(state) && document.visibilityState === 'visible';
+      if (want && !wakeLock && !wakePending && navigator.wakeLock){
+        wakePending = true;
+        navigator.wakeLock.request('screen').then(function(l){
+          wakePending = false; wakeLock = l;
+          l.addEventListener('release', function(){ wakeLock = null; });
+        }).catch(function(){ wakePending = false; });
+      } else if (!want && wakeLock){
+        var l = wakeLock; wakeLock = null; l.release().catch(function(){});
+      }
+    } catch(e){}
+  }
+  document.addEventListener('visibilitychange', syncWake);
+
+  /* ---------- lead-change stinger ---------- */
+  var stingerEl = document.getElementById('stinger'), stingerTimer = null;
+  function leaders(g){
+    if (!g || !g.rounds.length) return [];
+    var st = standings(g);
+    return st.filter(function(p){ return p.total === st[0].total; });
+  }
+  function playStinger(p, msg){
+    stingerEl.style.setProperty('--pc', col(p));
+    stingerEl.innerHTML =
+      '<div class="st-wipe"></div><div class="st-ribbon"></div>' +
+      '<div class="st-text"><div class="st-l1">Schwoop<svg class="st-swoosh" viewBox="0 0 200 14" aria-hidden="true"><path d="M2 11 C 55 1, 125 1, 198 8"/></svg></div>' +
+      '<div class="st-l2">dat Sombitch</div><div class="st-who">' + esc(msg) + '</div></div>';
+    stingerEl.hidden = false;
+    try { if (navigator.vibrate) navigator.vibrate([40, 60, 90]); } catch(e){}
+    clearTimeout(stingerTimer);
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+    stingerTimer = setTimeout(hideStinger, reduce ? 2400 : 3050);
+  }
+  function hideStinger(){
+    clearTimeout(stingerTimer);
+    stingerEl.hidden = true; stingerEl.innerHTML = '';
+  }
+  /* Fires when a round is added and someone who wasn't leading now is. */
+  function checkLeadChange(oldG, newG){
+    if (!oldG || !newG || oldG.id !== newG.id) return;
+    if (oldG.rounds.length < 1 || newG.rounds.length <= oldG.rounds.length) return;
+    var before = leaders(oldG).map(function(p){ return p.id; });
+    var after = leaders(newG);
+    var fresh = after.filter(function(p){ return before.indexOf(p.id) < 0; });
+    if (!fresh.length) return;
+    var names = joinList(fresh.map(function(p){ return p.name; }));
+    var tie = after.length > 1, many = fresh.length > 1, over = isOver(newG);
+    var msg = over
+      ? (tie ? names + (many ? ' tie' : ' ties') + ' for the win' : names + ' steals the win')
+      : (tie ? names + (many ? ' tie' : ' ties') + ' for the lead' : names + ' takes the lead');
+    playStinger(fresh[0], msg);
+  }
+  stingerEl.addEventListener('click', hideStinger);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !stingerEl.hidden) hideStinger(); });
+
+  /* ---------- actions ---------- */
+  function arm(k){ armed = k; clearTimeout(armTimer); armTimer = setTimeout(function(){ armed = null; render(); }, 4000); }
+  function disarm(){ armed = null; clearTimeout(armTimer); }
+  function scrollTop(){ try { window.scrollTo({top:0, behavior:'smooth'}); } catch(e){ window.scrollTo(0,0); } }
+
+  function toSetup(){
+    draftPlayers = state ? state.players.map(function(p){ return p.name; }) : [];
+    draftDealer = state ? (state.dealer + 1) % state.players.length : 0;
+    choosingDealer = false; setupErr = ''; editing = null; entry = {}; entryErr = ''; view = 'setup';
+    render(); scrollTop();
+  }
+  function addPlayer(){
+    var inp = document.getElementById('newName'); if (!inp) return;
+    var name = inp.value.trim().replace(/\s+/g, ' ');
+    if (!name) return;
+    if (draftPlayers.length >= 8){ setupErr = 'Eight players is the most a game can hold.'; render(); return; }
+    var dup = draftPlayers.some(function(p){ return p.toLowerCase() === name.toLowerCase(); });
+    if (dup){ setupErr = name + ' is already on the list.'; render(); return; }
+    draftPlayers.push(name); setupErr = '';
+    render();
+  }
+  function startGame(){
+    if (draftPlayers.length < 2) return;
+    if (state && state.rounds.length) archive(state);
+    if (draftDealer >= draftPlayers.length) draftDealer = 0;
+    state = freshGame(draftPlayers.slice(), draftDealer);
+    persistGame();
+    view = 'game'; entry = {}; editing = null; entryErr = '';
+    render(); scrollTop(); toast('Game on. ' + dealerOf(state, 0).name + ' deals first.');
+  }
+  function startEdit(i){
+    if (!state || !state.rounds[i]) return;
+    editing = i; entryErr = ''; choosingDealer = false; disarm();
+    entry = {};
+    state.players.forEach(function(p){ entry[p.id] = String((state.rounds[i].s && state.rounds[i].s[p.id]) || 0); });
+    render();
+    var el = document.getElementById('entryPanel');
+    if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  function inputs(){ return Array.prototype.slice.call(root.querySelectorAll('input[data-pid]')); }
+  function nextEmpty(pid){
+    var list = inputs(), idx = -1;
+    list.forEach(function(el, k){ if (el.dataset.pid === pid) idx = k; });
+    var after = list.slice(idx + 1).concat(list.slice(0, idx + 1));
+    for (var k = 0; k < after.length; k++){ if (after[k].dataset.pid !== pid && !after[k].value) return after[k]; }
+    return null;
+  }
+  function saveRound(){
+    var r = {s:{}};
+    for (var k = 0; k < state.players.length; k++){
+      var p = state.players[k];
+      var v = String(entry[p.id] != null ? entry[p.id] : '').trim();
+      if (v === ''){ entryErr = 'Enter points for ' + p.name + '. Use 0 if they went out.'; render(); var f = document.getElementById('pts-' + p.id); if (f) f.focus(); return; }
+      var n = parseInt(v, 10);
+      if (!(n >= 0 && n <= 9999)){ entryErr = 'Points for ' + p.name + ' must be a whole number.'; render(); return; }
+      r.s[p.id] = n;
+    }
+    var wasEdit = editing !== null, num = wasEdit ? editing + 1 : state.rounds.length + 1;
+    var before = JSON.parse(JSON.stringify(state));
+    if (wasEdit) state.rounds[editing] = r; else state.rounds.push(r);
+    editing = null; entry = {}; entryErr = ''; choosingDealer = false; disarm();
+    persistGame();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    render();
+    var over = isOver(state);
+    toast(over ? 'Game over!' : wasEdit ? 'Round ' + num + ' updated' : 'Round ' + num + ' saved. ' + dealerOf(state, state.rounds.length).name + ' deals next.');
+    if (over || !wasEdit) scrollTop();
+    checkLeadChange(before, state);
+  }
+
+  root.addEventListener('click', function(e){
+    var b = e.target.closest('[data-action]');
+    if (!b){
+      var tr = e.target.closest('tr[data-i]');
+      if (tr && canWrite()) startEdit(parseInt(tr.dataset.i, 10));
+      return;
+    }
+    var a = b.dataset.action;
+    if (a === 'remove'){
+      var ri = parseInt(b.dataset.i, 10); draftPlayers.splice(ri, 1);
+      if (ri < draftDealer) draftDealer--; else if (ri === draftDealer) draftDealer = 0;
+      if (draftDealer >= draftPlayers.length) draftDealer = 0;
+      setupErr = ''; render();
+    }
+    else if (a === 'pickDealer'){ draftDealer = parseInt(b.dataset.i, 10); render(); }
+    else if (a === 'chooseDealer'){ choosingDealer = !choosingDealer; render(); }
+    else if (a === 'setDealer'){
+      var di = parseInt(b.dataset.i, 10), np = state.players.length;
+      state.dealer = ((di - state.rounds.length) % np + np) % np;
+      choosingDealer = false; persistGame(); render();
+      toast(state.players[di].name + ' is dealing');
+    }
+    else if (a === 'start') startGame();
+    else if (a === 'back'){ view = 'game'; render(); scrollTop(); }
+    else if (a === 'out'){
+      var pid = b.dataset.pid; entry[pid] = '0';
+      var inp = document.getElementById('pts-' + pid); if (inp) inp.value = '0';
+      b.setAttribute('aria-pressed', 'true');
+      updateProg();
+      var nx = nextEmpty(pid); if (nx) nx.focus();
+    }
+    else if (a === 'edit') startEdit(parseInt(b.dataset.i, 10));
+    else if (a === 'cancelEdit'){ editing = null; entry = {}; entryErr = ''; disarm(); render(); }
+    else if (a === 'deleteRound'){
+      if (armed !== 'delete'){ arm('delete'); render(); return; }
+      disarm(); var i = editing; state.rounds.splice(i, 1); editing = null; entry = {}; entryErr = '';
+      persistGame(); render(); toast('Round ' + (i + 1) + ' deleted');
+    }
+    else if (a === 'newGame'){
+      if (state.rounds.length && !isOver(state) && armed !== 'newGame'){ arm('newGame'); render(); return; }
+      disarm(); toSetup();
+    }
+    else if (a === 'rematch'){
+      archive(state);
+      state = freshGame(state.players.map(function(p){ return p.name; }), (state.dealer + 1) % state.players.length);
+      persistGame(); editing = null; entry = {}; entryErr = ''; choosingDealer = false;
+      render(); scrollTop(); toast('Rematch on. ' + dealerOf(state, 0).name + ' deals first.');
+    }
+    else if (a === 'toSetup') toSetup();
+    else if (a === 'stinger'){
+      var top = leaders(state);
+      if (top.length) playStinger(top[0], top.length > 1 ? joinList(top.map(function(p){ return p.name; })) + ' are tied' : top[0].name + (isOver(state) ? ' wins' : ' is leading'));
+    }
+  });
+  root.addEventListener('input', function(e){
+    var t = e.target;
+    if (t.dataset && t.dataset.pid){
+      var v = t.value.replace(/[^0-9]/g, '');
+      if (v !== t.value) t.value = v;
+      entry[t.dataset.pid] = v;
+      var ob = root.querySelector('.out[data-pid="' + t.dataset.pid + '"]');
+      if (ob) ob.setAttribute('aria-pressed', String(v === '0'));
+      updateProg();
+      if (entryErr){ entryErr = ''; var er = root.querySelector('#roundForm .err'); if (er) er.remove(); }
+    } else if (t.id === 'newName' && setupErr){ setupErr = ''; var er2 = root.querySelector('.panel > .err'); if (er2) er2.remove(); }
+  });
+  root.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && e.target.dataset && e.target.dataset.pid){
+      var nx = nextEmpty(e.target.dataset.pid);
+      if (nx){ e.preventDefault(); nx.focus(); }
+    }
+  });
+  root.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (e.target.id === 'addForm') addPlayer();
+    else if (e.target.id === 'roundForm') saveRound();
+  });
+
+  /* ---------- boot ---------- */
+  function onGame(snap){
+    clearTimeout(loadTimer); loadNote = '';
+    var d = snap.exists ? snap.data() : null;
+    var j = d ? JSON.stringify(d) : 'null';
+    if (j === lastJSON && view !== 'loading') return;
+    lastJSON = j;
+    var prev = state, wasLoading = view === 'loading';
+    state = d ? normalize(JSON.parse(j)) : null;
+    if (view === 'loading') view = state ? 'game' : 'setup';
+    else if (view === 'game' && !state) view = 'setup';
+    if (editing !== null && (!state || editing >= state.rounds.length)){ editing = null; entry = {}; }
+    render();
+    if (!wasLoading && view === 'game') checkLeadChange(prev, state);
+  }
+  function initDb(db){
+    mode = 'db';
+    gameRef = db.doc('games/current');
+    histCol = db.collection('history');
+    loadTimer = setTimeout(function(){
+      if (view === 'loading'){ loadNote = "Can't reach your saved game yet. It will show up here once the connection returns."; render(); }
+    }, 10000);
+    gameRef.onSnapshot(onGame, function(){
+      clearTimeout(loadTimer);
+      if (view === 'loading') view = 'setup';
+      toast("Saved scores aren't available right now.");
+      render();
+    });
+    histCol.orderBy('endedAt', 'desc').limit(20).onSnapshot(function(s){
+      history = s.docs.map(function(d){ return d.data(); });
+      if (view === 'setup') render();
+    }, function(){});
+  }
+  function initLocal(){
+    if (mode === 'db') return;
+    mode = 'local';
+    try {
+      var c = localStorage.getItem(LS_CUR); state = c ? normalize(JSON.parse(c)) : null;
+      var h = localStorage.getItem(LS_HIST); history = h ? JSON.parse(h) : [];
+      if (!Array.isArray(history)) history = [];
+    } catch(e){ mode = 'memory'; state = null; history = []; }
+    view = state ? 'game' : 'setup';
+    render();
+  }
+
+  render();
+  if (window.claude && typeof window.claude.use === 'function'){
+    window.claude.use('db').then(function(db){ if (db) initDb(db); else initLocal(); }).catch(initLocal);
+    window.claude.use('user').then(function(u){
+      if (!u || typeof u.can !== 'function') return;
+      return Promise.resolve(u.can('data.write')).then(function(v){ if (v === false){ writeFlag = false; render(); } });
+    }).catch(function(){});
+  } else {
+    initLocal();
+  }
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
